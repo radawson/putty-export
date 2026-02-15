@@ -1,0 +1,10 @@
+# Data Source
+putty_sessions.reg
+
+# Virtual Environment
+.venv/
+
+# Build
+dist/
+build/
+*.egg-info/
