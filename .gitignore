@@ -8,3 +8,6 @@ putty_sessions.reg
 dist/
 build/
 *.egg-info/
+
+# Publishing
+PUBLISH.md

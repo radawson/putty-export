@@ -24,6 +24,9 @@ classifiers = [
     "Topic :: Security",
 ]
 
+[project.optional-dependencies]
+dev = ["build", "twine"]
+
 [project.scripts]
 putty-export = "putty_export.cli:main"
 
