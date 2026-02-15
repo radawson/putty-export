@@ -1,0 +1,35 @@
+# Publish to PyPI when a version tag is pushed (e.g. v0.1.0, v1.2.3).
+# Ensure you've bumped the version in pyproject.toml before creating the tag.
+
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for PyPI trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Uses PyPI trusted publishing (OIDC) if configured on PyPI.
+        # Alternatively, add repository secret PYPI_API_TOKEN for token-based auth.
+        with:
+          skip-existing: true  # Do not fail if this version was already published

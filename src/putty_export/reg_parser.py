@@ -1,4 +1,11 @@
-"""Parse Windows .reg files into a structure keyed by full key path and value name."""
+"""Parse Windows .reg files into a structure keyed by full key path and value name.
+
+Reads a Windows Registry Editor (.reg) text file and produces a nested dict:
+``result[full_key_path][value_name] = decoded_value``. Only ``dword`` and
+``hex(1)`` value types are decoded (to int and UTF-16LE string respectively);
+other types are ignored. File encoding is detected from BOM: UTF-16-LE
+(``\\xff\\xfe``), UTF-16-BE (``\\xfe\\xff``), or UTF-8 if no BOM.
+"""
 
 import re
 from pathlib import Path
@@ -13,9 +20,14 @@ VALUE_LINE = re.compile(r'^"([^"]+)"=(dword|hex\(1\)):(.+)$')
 
 
 def parse_reg_file(path: str | Path) -> dict[str, dict[str, Any]]:
-    """
-    Parse a .reg file and return a nested dict: keys[full_key_path][value_name] = decoded_value.
-    Decodes dword as int and hex(1) as UTF-16LE string. Other value types are ignored.
+    """Parse a .reg file and return a nested dict of key paths to value names to decoded values.
+
+    :param path: Path to the .reg file (string or pathlib.Path).
+    :type path: str | Path
+    :returns: Nested dict: ``result[full_key_path][value_name]`` is the decoded value (int for
+        ``dword``, str for ``hex(1)``).
+    :rtype: dict[str, dict[str, Any]]
+    :raises OSError: If the file cannot be opened or read (e.g. file not found, permission error).
     """
     path = Path(path)
     result: dict[str, dict[str, Any]] = {}

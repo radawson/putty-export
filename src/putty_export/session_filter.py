@@ -1,4 +1,10 @@
-"""Filter parsed registry keys to SSH sessions only (Protocol=ssh, non-empty HostName)."""
+"""Filter parsed registry keys to SSH sessions only.
+
+Keeps only keys that represent PuTTY sessions (under ``\\Sessions\\<Name>``),
+have ``Protocol`` equal to ``ssh`` (case-insensitive), and have a non-empty
+``HostName``. The "Default Settings" template session can be excluded or included.
+Duplicate session names: the later key in the input dict wins.
+"""
 
 import re
 from urllib.parse import unquote
@@ -9,11 +15,18 @@ SESSIONS_PREFIX_NORMALIZED = SESSIONS_PREFIX.lower().replace("/", "\\")
 
 
 def _normalize_key(key: str) -> str:
+    """Normalize a registry key path for comparison (backslashes, lowercase, no leading/trailing \\.)."""
     return key.replace("/", "\\").strip("\\").lower()
 
 
 def _session_name_from_key(full_key: str) -> str | None:
-    """Extract session name from key path. Returns None if not a session key."""
+    """Extract the session name from a registry key path (last segment, URL-decoded).
+
+    :param full_key: Full registry key path (e.g. ``\\Software\\...\\Sessions\\my-session``).
+    :type full_key: str
+    :returns: Session name, or None if the key is not under Sessions or has no segment.
+    :rtype: str | None
+    """
     norm = _normalize_key(full_key)
     prefix = SESSIONS_PREFIX_NORMALIZED.strip("\\")
     if not norm.startswith(prefix):
@@ -34,13 +47,20 @@ def filter_ssh_sessions(
     *,
     skip_default_settings: bool = True,
 ) -> dict[str, dict[str, object]]:
-    """
-    Return a dict of session_name -> session_values for keys that are SSH sessions:
-    - Key path is ...\\Sessions\\<Name> (not the bare Sessions key).
-    - Protocol (decoded string) equals "ssh" (case-insensitive).
-    - HostName (decoded string) is non-empty after strip.
-    - Optionally skip session name "Default Settings".
-    Duplicate session names: later key wins.
+    """Return session_name -> session_values for keys that are SSH sessions.
+
+    Included keys must be under ``...\\Sessions\\<Name>`` (not the bare Sessions key),
+    have ``Protocol`` equal to ``ssh`` (case-insensitive), and have a non-empty
+    ``HostName``. If ``skip_default_settings`` is True, the "Default Settings"
+    session is excluded. When the same session name appears for multiple keys,
+    the later key wins.
+
+    :param keys: Parsed registry dict from :func:`parse_reg_file`.
+    :type keys: dict[str, dict[str, object]]
+    :param skip_default_settings: If True, exclude the "Default Settings" session.
+    :type skip_default_settings: bool
+    :returns: Dict mapping session name (URL-decoded) to that key's value dict.
+    :rtype: dict[str, dict[str, object]]
     """
     result: dict[str, dict[str, object]] = {}
     norm_prefix = _normalize_key(SESSIONS_PREFIX).rstrip("\\")

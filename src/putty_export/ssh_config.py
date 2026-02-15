@@ -1,10 +1,17 @@
-"""Build OpenSSH config text from filtered PuTTY session data."""
+"""Build OpenSSH config text from filtered PuTTY session data.
+
+Maps PuTTY session key names (e.g. HostName, PortNumber, ProxyMethod) to
+OpenSSH config directives. Produces Host blocks with HostName, Port, User,
+IdentityFile, ProxyCommand/ProxyJump, LocalForward/RemoteForward/DynamicForward,
+ForwardAgent, Compression, and ForwardX11 as applicable.
+"""
 
 import re
 from typing import Any
 
 
 def _get_str(data: dict[str, Any], key: str, default: str = "") -> str:
+    """Return a string value from the session dict, or default if missing/non-string."""
     v = data.get(key)
     if isinstance(v, str):
         return v.strip()
@@ -12,6 +19,7 @@ def _get_str(data: dict[str, Any], key: str, default: str = "") -> str:
 
 
 def _get_int(data: dict[str, Any], key: str, default: int = 0) -> int:
+    """Return an integer value from the session dict, or default if missing/non-integer."""
     v = data.get(key)
     if isinstance(v, int):
         return v
@@ -21,7 +29,13 @@ def _get_int(data: dict[str, Any], key: str, default: int = 0) -> int:
 
 
 def _quote_value(s: str) -> str:
-    """Quote value if it contains spaces or special characters."""
+    """Quote a value for SSH config if it contains spaces or special characters.
+
+    :param s: The value string (e.g. Host alias or path).
+    :type s: str
+    :returns: The value, optionally wrapped in double quotes with escapes.
+    :rtype: str
+    """
     if not s:
         return '""'
     if re.search(r'[\s#"\\]', s):
@@ -30,7 +44,17 @@ def _quote_value(s: str) -> str:
 
 
 def _build_proxy_directive(data: dict[str, Any]) -> str | None:
-    """Build ProxyCommand or ProxyJump line. Returns None if no proxy."""
+    """Build a single ProxyCommand or ProxyJump line from session proxy settings.
+
+    ProxyMethod: 0 = none (returns None), 1 = SOCKS, 2 = HTTP CONNECT, 3 = Telnet,
+    4 = Local command, 5 = SSH (jump host). Uses ProxyHost, ProxyPort, ProxyUsername,
+    and ProxyTelnetCommand as needed.
+
+    :param data: Session values dict.
+    :type data: dict[str, Any]
+    :returns: One indented line (e.g. ``  ProxyJump user@host``), or None if no proxy.
+    :rtype: str | None
+    """
     method = _get_int(data, "ProxyMethod", 0)
     host = _get_str(data, "ProxyHost")
     if method == 0 or not host:
@@ -61,9 +85,15 @@ def _build_proxy_directive(data: dict[str, Any]) -> str | None:
 
 
 def _parse_port_forwardings(raw: str) -> list[tuple[str, str]]:
-    """
-    Parse PortForwardings string. Returns list of (directive_name, value).
-    Format: Lport=host:port, Rport=host:port, Dport. Optional bind: Lbind:port=host:port.
+    """Parse PuTTY PortForwardings string into (directive_name, value) pairs.
+
+    Format is comma-separated: ``Lport=host:port`` (LocalForward), ``Rport=host:port``
+    (RemoteForward), ``Dport`` (DynamicForward). Optional bind address: ``Lbind:port=host:port``.
+
+    :param raw: Comma-separated PortForwardings string from session data.
+    :type raw: str
+    :returns: List of (directive_name, value) e.g. ``("LocalForward", "8080 localhost:80")``.
+    :rtype: list[tuple[str, str]]
     """
     if not raw or not raw.strip():
         return []
@@ -95,14 +125,28 @@ def _parse_port_forwardings(raw: str) -> list[tuple[str, str]]:
 
 
 def _identity_file_path(path: str) -> str:
-    """Normalize path: backslashes to forward slashes for cross-platform hint."""
+    """Normalize a path by converting backslashes to forward slashes.
+
+    :param path: Typically a Windows path from PuTTY (e.g. ``C:\\Users\\.ssh\\key.ppk``).
+    :type path: str
+    :returns: Same path with backslashes replaced by forward slashes; empty input returned as-is.
+    :rtype: str
+    """
     if not path:
         return path
     return path.replace("\\", "/")
 
 
 def build_host_block(session_name: str, data: dict[str, Any]) -> str:
-    """Build one Host block for a single session. session_name becomes the Host alias."""
+    """Build one OpenSSH Host block for a single session.
+
+    :param session_name: Used as the Host alias (may contain spaces; will be quoted if needed).
+    :type session_name: str
+    :param data: Session values dict (e.g. from :func:`filter_ssh_sessions`).
+    :type data: dict[str, Any]
+    :returns: A single Host block as a multi-line string, with directives indented by two spaces.
+    :rtype: str
+    """
     lines = [f"Host {_quote_value(session_name)}"]
 
     hostname = _get_str(data, "HostName")
@@ -147,7 +191,15 @@ def build_host_block(session_name: str, data: dict[str, Any]) -> str:
 
 
 def build_ssh_config(sessions: dict[str, dict[str, Any]]) -> str:
-    """Build full SSH config from sessions dict (session_name -> values)."""
+    """Build full OpenSSH config text from a dict of sessions.
+
+    Host blocks are emitted in sorted order by session name, separated by blank lines.
+
+    :param sessions: Dict mapping session name to session values (e.g. from :func:`filter_ssh_sessions`).
+    :type sessions: dict[str, dict[str, Any]]
+    :returns: Complete SSH config file content as a single string.
+    :rtype: str
+    """
     blocks = []
     for name in sorted(sessions.keys()):
         blocks.append(build_host_block(name, sessions[name]))

@@ -1,12 +1,24 @@
-"""Decode Windows .reg value types: hex(1) UTF-16LE strings and dword integers."""
+"""Decode Windows .reg value types into Python values.
+
+This module handles the two value types produced by the PuTTY registry export:
+``hex(1)`` (UTF-16LE encoded strings) and ``dword`` (32-bit integers). Other
+registry value types are not used by the parser.
+"""
 
 import re
 
 
 def decode_hex_string(raw: str) -> str:
-    """
-    Decode a hex(1) registry value (UTF-16LE) to a string.
-    Strips trailing null terminator. Returns empty string on invalid/empty input.
+    """Decode a ``hex(1)`` registry value (UTF-16LE) to a string.
+
+    The raw value is a comma- or space-separated list of hex bytes (e.g.
+    ``73,00,68,00,00,00``). Bytes are decoded as UTF-16LE and a trailing
+    null terminator is stripped. Invalid or empty input yields an empty string.
+
+    :param raw: Comma- or space-separated hex bytes string from a .reg file.
+    :type raw: str
+    :returns: Decoded string, or empty string if input is invalid or empty.
+    :rtype: str
     """
     if not raw or not raw.strip():
         return ""
@@ -32,9 +44,15 @@ def decode_hex_string(raw: str) -> str:
 
 
 def decode_dword(raw: str) -> int:
-    """
-    Decode a dword registry value (8 hex digits) to an integer.
-    Returns 0 on invalid/empty input.
+    """Decode a ``dword`` registry value to an integer.
+
+    The raw value is a hexadecimal string of up to 8 digits (e.g. ``00000016``
+    for 22). Invalid or empty input yields 0.
+
+    :param raw: Hex string (up to 8 digits) from a .reg file.
+    :type raw: str
+    :returns: Decoded integer, or 0 if input is invalid or empty.
+    :rtype: int
     """
     if not raw or not raw.strip():
         return 0
