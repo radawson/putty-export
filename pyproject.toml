@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "putty-export"
-version = "0.1.1"
+version = "0.1.2"
 description = "Export PuTTY session settings from Windows registry to OpenSSH config format"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -26,9 +26,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dawsora/putty-export"
-Repository = "https://github.com/dawsora/putty-export"
-Documentation = "https://github.com/dawsora/putty-export#readme"
+Homepage = "https://github.com/radawson/putty-export"
+Repository = "https://github.com/radawson/putty-export"
+Documentation = "https://github.com/radawson/putty-export#readme"
 
 [project.optional-dependencies]
 dev = ["build", "twine"]
